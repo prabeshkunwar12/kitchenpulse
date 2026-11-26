@@ -1,6 +1,11 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.db
+.pytest_cache/
+.venv/
 node_modules/
 .expo/
-tablet/
+.DS_Store
+/.tablet-git-backup/

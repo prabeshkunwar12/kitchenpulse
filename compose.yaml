@@ -1,23 +1,35 @@
+name: kitchenpulse-dev
 services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_USER: kitchen
-      POSTGRES_PASSWORD: kitchen_dev
-      POSTGRES_DB: kitchen
-    volumes: [data:/var/lib/postgresql/data]
+      POSTGRES_USER: ${POSTGRES_USER:-kitchenpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+      POSTGRES_DB: ${POSTGRES_DB:-kitchenpulse_dev}
+    volumes:
+      - inventory_data:/var/lib/postgresql/data
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U kitchen']
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 3s
       timeout: 3s
       retries: 20
   api:
-    build: ./api
-    ports: ['8000:8000']
+    build: ./services/api
+    ports:
+      - "${API_BIND_HOST:-127.0.0.1}:${API_PORT:-8001}:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://kitchen:kitchen_dev@db/kitchen
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-kitchenpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+      POSTGRES_DB: ${POSTGRES_DB:-kitchenpulse_dev}
+      WEB_PREVIEW_ORIGIN: ${WEB_PREVIEW_ORIGIN:-}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=2).close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
 volumes:
-  data:
+  inventory_data:
