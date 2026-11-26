@@ -11,17 +11,19 @@
 
 ## Phase 1 implementation and acceptance criteria
 
+Sprint 1 covers the local environment, decimal catalog, core API, seed, PostgreSQL tests and Expo integration. The [progress log](PROGRESS.md) records checks completed on the Mac. Phase 1 physical-device sign-off remains pending.
+
 ### 1.1 Establish reproducible local startup
 
 - Affected areas include root Compose and Git configuration, API Dockerfile and health routes, and environment examples for root and tablet.
 - Correct the API build context. Use required environment values and a loopback default. Leave PostgreSQL accessible only inside Compose. Set a project name and published port that avoid collisions with the running prototype. Add liveness and database readiness endpoints.
-- Plan a root Git repository and preserve the tablet's nested history. Verify ignore rules for source files, local secrets, generated assets and caches before the first commit.
+- Use the root Git repository for the tablet sources and preserve the scaffold history. Verify ignore rules for local secrets and caches.
 - **Accept when** a clean checkout can follow the README, build and start with example configuration and user-provided values, reach readiness, and show Swagger. The process has a documented way to isolate its PostgreSQL volume and can be restarted without affecting the original stack.
 
 ### 1.2 Add migrations, catalog and demo inventory
 
 - Affected areas include API configuration, SQLAlchemy models, Pydantic schemas, FastAPI routes, Alembic and seed command.
-- Confirm quantity precision and the disposition of the existing volume. Add category records, item create/list/get/update/archive, category management, units and thresholds. Add bounded and normalized input validation, typed responses and clear errors for conflicting identifiers. Prevent existing item units being silently reinterpreted.
+- Use three decimal places and a separate development volume. Preserve the original demo volume. Add category records, item create/list/get/update/archive, category management, units and thresholds. Add bounded and normalized input validation, typed responses and clear errors for conflicting identifiers. Prevent existing item units being silently reinterpreted.
 - **Accept when** migrations bootstrap a clean PostgreSQL database and can be checked at head. Seed creates representative items in normal, low, out-of-stock and manually reported states. Repeating seed does not duplicate data or reset balances. Tests cover CRUD, invalid category and unit values, duplicate names, filtered reads, and archive preserving history.
 
 ### 1.3 Make stock changes, reports and undo reliable

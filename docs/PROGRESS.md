@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-11-26 · Sprint 1 foundation and core inventory
+
+The local Sprint 1 stack is healthy at `127.0.0.1:8001`. The Expo application reads and writes real stock through FastAPI. The physical iPad acceptance session remains pending.
+
+### Delivered
+
+- Fixed the Compose context and created ignored local environment configuration with checked-in examples. PostgreSQL stays private to Compose. The API binds to loopback by default and offers opt-in LAN testing.
+- Read the legacy database in a read-only transaction. Its one item and one opening movement match the original README's Salmon example. The original project remained running and its `kitchenpulse_data` volume stayed mounted. Development and tests use independent namespaced volumes.
+- Added Alembic migration `0001_inventory`, decimal catalog and ledger models, typed REST endpoints, physical count corrections, status and replenishment calculations, independent reports, idempotent stock writes, and linked undo.
+- Added 27 labeled sushi restaurant demo items in nine categories. The seed includes fractional, low, zero and manually reported examples.
+- Consolidated into the landscape Expo app at `apps/tablet`. The root repository can now track its sources. The original tablet Git metadata remains in the ignored local `.tablet-git-backup/` directory. The old UI draft remains in root Git history.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Fresh Compose startup | Built the API from `services/api`, created the independent development volume and reached healthy PostgreSQL and API readiness. |
+| Alembic | `alembic current` reported `0001_inventory (head)`. `alembic check` found no new operations. |
+| Seed and persistence | Initial seed created 27 items, repeated seed created zero. Inventory and history matched before and after restarting the new development database and replacing its API container. |
+| Backend tests | 25 passed against the isolated `kitchenpulse_test` PostgreSQL database. Covered catalog, fractional stock, status boundaries, reporting, counts, pagination, reversals, validation, rollback, and concurrent writes and retries. Starlette emitted one AnyIO deprecation warning. |
+| Expo checks | A frozen-lockfile install, TypeScript checking, ESLint and iOS and web bundle export passed. The Expo lint plugins use ESLint 9. |
+| Expo browser smoke | Rendered live inventory in a landscape viewport. Verified category search, empty results, status, manual report and clearing, fractional adjustment, history and linked undo. Verified offline feedback and reconnect retry. Simulated a lost response after commit and confirmed the same UUID yielded one transaction. |
+| Physical iPad | Pending. This Mac has Command Line Tools selected and no available `simctl`. Signed installation, LAN reachability, VoiceOver, Guided Access and the interaction time target remain unverified on hardware. |
+
+### Known limitations and next task
+
+The API is unauthenticated and intended for synthetic data on the private development stack. Catalog changes and physical count corrections are available through the API. The tablet handles routine adjustments, reports and undo. Its uncertain-request state is held in memory and does not survive an app restart.
+
+Run the [physical iPad checklist](../README.md#test-on-a-physical-ipad) on the intended device. Record signing and LAN setup, task timings, accessibility and actual kitchen usability before planning the Phase 2 tablet workflows.
+
 ## 2026-11-26 · Initial repository assessment
 
 The existing Docker stack serves read requests from the current backend source, and the Expo scaffold typechecks. Phase 1 implementation is pending. This session changed project documentation only.

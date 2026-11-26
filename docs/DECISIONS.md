@@ -2,30 +2,30 @@
 
 ## ADR 001 · Local modular monolith
 
-**Status** Accepted from the project brief.
+**Status** Accepted.
 
-Use one FastAPI service backed by PostgreSQL, with modules organized around inventory. Keep the native tablet as a separate client. Run the initial stack with Compose. This minimizes deployment and debugging work while allowing data and service boundaries to be tested.
+Use one FastAPI service backed by PostgreSQL, with code organized around inventory. Run the API and database under Compose. Keep the Expo tablet a separate REST client.
 
 ## ADR 002 · Canonical Expo application
 
-**Status** Proposed.
+**Status** Implemented in Sprint 1.
 
-Use the existing `apps/tablet` scaffold and port the useful behavior from `apps/mobile/App.tsx`. The scaffold already contains the Expo entry point, package lock, native configuration and assets. Consolidate into the root repository while preserving the nested history. Confirm the import procedure before changing Git metadata.
+Use `apps/tablet` and its existing Expo entry point, assets and dependency lock. The previous inventory UI informed the new screen. Preserve the original tablet Git metadata locally in `.tablet-git-backup/` and let the root repository track the app. Keep the former screen in root Git history.
 
-## ADR 003 · Stock ledger and request retries
+## ADR 003 · Decimal ledger and request retries
 
-**Status** Proposed.
+**Status** Implemented in Sprint 1.
 
-Use PostgreSQL and update the item's balance, movement entry, and deduplication record in one transaction. Undo records a compensating entry linked to the original. Derive reversal status from that link. This adds durable auditability and makes a retry after lost connectivity safe. Verify lock ordering, concurrent delivery and duplicate-key behavior against PostgreSQL.
+Store decimal quantities and ledger values as `NUMERIC(12,3)` and use Python `Decimal`. Transmit fractional inputs and all decimal responses as strings. Use one durable request UUID per stock action, enforced by the ledger's unique key and a transaction-scoped lock. Record undo as a linked compensation. A physical count makes earlier stock changes ineligible for undo, and a count itself can only be reversed while it is the latest ledger entry.
 
-## ADR 004 · Local iPad verification
+## ADR 004 · Private device verification
 
-**Status** Proposed, subject to target device and signing access.
+**Status** Local API and app implemented. Physical verification pending.
 
-Use a local native iOS build for milestone sign-off. Confirm the iPad model, iPadOS, signing and Developer Mode. Use a loopback-only API for Mac development and explicitly opt into LAN reachability for device tests. Check local network permission and iOS transport behavior on the intended build. See [Expo local builds](https://docs.expo.dev/guides/local-app-development/) and [Apple Guided Access](https://support.apple.com/en-ca/111795).
+Default to a loopback API bind. For device testing, use an explicit temporary LAN interface on a trusted network. Keep the local browser preview opt-in and allow an explicit loopback web origin. Confirm iPad model, signing, Developer Mode, LAN access, and Guided Access for the intended tablet. See [Expo local builds](https://docs.expo.dev/guides/local-app-development/) and [Apple Guided Access](https://support.apple.com/en-ca/111795).
 
-## Decisions awaiting input
+## ADR 005 · Legacy and test volume isolation
 
-- Confirm integer package quantities or fractional precision and the relevant units before committing the schema.
-- Confirm the existing PostgreSQL volume's value and whether Phase 1 needs a tested import.
-- Confirm manual-report clearing behavior and preserve the proposed API-only configuration flow for Phase 1 unless day-one workflows require a change.
+**Status** Implemented in Sprint 1.
+
+The original one-item database matched the original README's demo and opening stock entry in a read-only check. Preserve that volume. Use independent Compose projects and volumes for development and tests. Tests require the exact `kitchenpulse_test` database and use it to reset inventory between cases.

@@ -1,46 +1,41 @@
 # Architecture
 
-## Current workspace
-
-`services/api/main.py` contains FastAPI routes, SQLAlchemy models and database logic in one file. The Dockerfile is colocated, but root `compose.yaml` builds from the missing `./api` directory. `apps/tablet` contains the Expo entry point, dependencies and assets. It renders the template screen. `apps/mobile/App.tsx` contains the inventory UI prototype and has no runnable package of its own.
-
-## Proposed structure
+KitchenPulse runs a native tablet client and one FastAPI service backed by PostgreSQL. The Compose database is private to its project. The API publishes on loopback by default. The iPad uses an explicit temporary LAN bind during local acceptance testing.
 
 ```text
 kitchenpulse/
-├── AGENTS.md
-├── README.md
-├── compose.yaml
-├── .env.example
-├── apps/
-│   └── tablet/
-│       ├── App.tsx, index.ts, app.json
-│       ├── .env.example
-│       ├── assets/
-│       └── src/
-│           ├── api/
-│           └── inventory/
-├── services/
-│   └── api/
-│       ├── Dockerfile, requirements.txt, alembic.ini
-│       ├── app/
-│       │   ├── main.py, config.py, db.py
-│       │   └── inventory/
-│       │       ├── routes.py, schemas.py, models.py
-│       │       └── service.py
-│       ├── migrations/
-│       └── tests/
+├── compose.yaml, .env.example
+├── apps/tablet/
+│   ├── App.tsx, index.ts, app.json, .env.example
+│   ├── assets/
+│   └── src/
+│       ├── api/client.ts
+│       └── inventory/
+│           ├── InventoryScreen.tsx
+│           ├── actions.ts
+│           └── components.tsx
+├── services/api/
+│   ├── Dockerfile, requirements.txt, alembic.ini
+│   ├── app/
+│   │   ├── main.py, db.py, seed.py
+│   │   └── inventory/
+│   │       ├── models.py, schemas.py, routes.py
+│   │       └── service.py
+│   ├── migrations/
+│   └── tests/
 └── docs/
 ```
 
-Adopt `apps/tablet` as the sole Expo app. Carry over useful UI behavior from the spare screen and retire it after verifying parity and preserving its history. Keep infrastructure files in the root while Compose is the only deployment mechanism. The empty `infrastructure/` directory can house future Terraform when that work begins.
+## Tablet
 
-The project root has no Git repository today. The tablet scaffold has a nested repository and an untracked `.env`. Phase 1 should establish a root repository, preserve the nested history, and verify that the tablet sources and lockfile can be tracked without staging the environment file. Resolve the root `tablet/` ignore rule as part of consolidation. Confirm the import approach before relocating repository metadata.
+`apps/tablet` is the canonical Expo app. It has one landscape screen with inventory, attention and history views. TanStack Query owns cached server state. The UI holds search, category selection, dialogs and in-flight actions in memory. It refreshes affected queries after a stock action and retains the same request UUID for a retry when the outcome is uncertain. The API remains authoritative for decimal balances and stock status.
 
-## Runtime and write flow
+The original Expo scaffold commit was preserved in the ignored local `.tablet-git-backup/` directory. The root repository can now track the tablet files directly. The retired `apps/mobile/App.tsx` draft is available in root Git history.
 
-The React Native app calls typed FastAPI REST endpoints. TanStack Query owns cached server state and invalidates or refreshes affected views after mutations. Keep short-lived UI state local. Introduce Expo Router when multiple routes are necessary. PostgreSQL holds the authoritative balance and transaction ledger. The container network connects FastAPI to PostgreSQL. The Mac publishes the API on loopback for local development and on an explicitly selected interface for device validation.
+## Stock writes
 
-A stock action creates one idempotency key. Within a database transaction, the service claims the key through a uniqueness constraint, locks the item, validates the proposed balance, and commits the new quantity with one ledger entry and the durable request outcome. A competing delivery waits for the first claim to resolve, then returns its recorded outcome if the request matches. A conflicting reuse fails. The client refreshes current stock after a replay so an earlier response cannot overwrite a newer balance. Undo follows the same write path with an explicit link to the original movement and eligibility checks.
+The API validates input before opening a stock transaction. It takes a transaction-scoped PostgreSQL advisory lock keyed by the request UUID and checks for a recorded transaction with that key. New writes then acquire the item's row lock. The item balance and the immutable ledger entry commit together. A matching retry returns the existing transaction. Reusing the UUID with a different operation, item, quantity or reason returns a conflict.
 
-Use a single deployment and location for Phase 1. Keep category, item identity and movements explicit so a later migration can distinguish an item catalog from per-location balances and enforce location-scoped uniqueness. Tenancy, location authorization, offline synchronization and notifications receive concrete designs in later phases.
+A reversal uses the same write path and inserts a new entry linked to the original transaction. The service checks the current balance, newer physical counts, item activity and previous reversals while it holds the item lock. PostgreSQL constraints protect balances, arithmetic, transaction types, unique keys and the reversal relationship.
+
+The system currently uses a single location. Inventory catalog and ledger are explicit so a later migration can introduce per-location balances. Authentication, offline synchronization, device identity and push alerts belong to later milestones.
